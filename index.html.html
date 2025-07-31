@@ -1,0 +1,1337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Archero-Style Game with Skill Tree</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Arial', sans-serif;
+            background: #000;
+            color: #fff;
+        }
+        
+        #gameCanvas {
+            display: block;
+        }
+        
+        #ui {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10;
+        }
+        
+        #healthBar {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            width: 300px;
+            height: 25px;
+            background: rgba(0, 0, 0, 0.7);
+            border: 2px solid #444;
+            border-radius: 15px;
+            overflow: hidden;
+        }
+        
+        #healthFill {
+            height: 100%;
+            width: 100%;
+            background: linear-gradient(to right, #ff3333, #ff7777);
+            transition: width 0.3s;
+        }
+        
+        #xpBar {
+            position: absolute;
+            bottom: 55px;
+            left: 20px;
+            width: 300px;
+            height: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            border: 2px solid #444;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        
+        #xpFill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(to right, #3399ff, #77bbff);
+            transition: width 0.3s;
+        }
+        
+        #waveInfo {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            font-size: 24px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+        }
+        
+        #skillPoints {
+            position: absolute;
+            top: 60px;
+            left: 20px;
+            font-size: 20px;
+            color: #ffcc00;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+        }
+        
+        #skillTree {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 800px;
+            height: 600px;
+            background: rgba(20, 20, 40, 0.95);
+            border: 3px solid #555;
+            border-radius: 15px;
+            display: none;
+            pointer-events: all;
+            overflow: hidden;
+            box-shadow: 0 0 30px rgba(100, 100, 255, 0.5);
+        }
+        
+        #skillTree h2 {
+            text-align: center;
+            margin-top: 15px;
+            color: #ffcc00;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+        }
+        
+        .skill-node {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: #333;
+            border: 2px solid #777;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 24px;
+        }
+        
+        .skill-node:hover {
+            transform: scale(1.1);
+            border-color: #ffcc00;
+            box-shadow: 0 0 15px rgba(255, 204, 0, 0.7);
+        }
+        
+        .skill-node.unlocked {
+            background: #4444aa;
+            border-color: #7777ff;
+        }
+        
+        .skill-node.available {
+            background: #555;
+            border-color: #ffcc00;
+            animation: pulse 1.5s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(255, 204, 0, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(255, 204, 0, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(255, 204, 0, 0); }
+        }
+        
+        .skill-connection {
+            position: absolute;
+            background: #555;
+            height: 3px;
+            transform-origin: left center;
+            z-index: -1;
+        }
+        
+        .skill-connection.active {
+            background: #7777ff;
+        }
+        
+        #closeSkillTree {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            width: 30px;
+            height: 30px;
+            background: #ff3333;
+            border: none;
+            border-radius: 50%;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        #closeSkillTree:hover {
+            background: #ff5555;
+        }
+        
+        #gameOver {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.8);
+            padding: 30px;
+            border-radius: 15px;
+            text-align: center;
+            display: none;
+            pointer-events: all;
+        }
+        
+        #gameOver h2 {
+            color: #ff3333;
+            margin-top: 0;
+        }
+        
+        #restartBtn {
+            background: #3399ff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            font-size: 18px;
+            cursor: pointer;
+            margin-top: 15px;
+        }
+        
+        #restartBtn:hover {
+            background: #55aaff;
+        }
+        
+        #instructions {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 10px;
+            max-width: 300px;
+        }
+        
+        #instructions h3 {
+            margin-top: 0;
+            color: #ffcc00;
+        }
+        
+        #instructions p {
+            margin: 5px 0;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+    
+    <div id="ui">
+        <div id="waveInfo">Wave: <span id="waveNumber">1</span></div>
+        <div id="skillPoints">Skill Points: <span id="pointsCount">0</span></div>
+        
+        <div id="healthBar">
+            <div id="healthFill"></div>
+        </div>
+        
+        <div id="xpBar">
+            <div id="xpFill"></div>
+        </div>
+        
+        <div id="instructions">
+            <h3>Controls</h3>
+            <p>WASD / Arrow Keys: Move</p>
+            <p>Mouse: Aim direction</p>
+            <p>K: Open Skill Tree</p>
+            <p>Survive waves of enemies!</p>
+        </div>
+        
+        <div id="skillTree">
+            <h2>Skill Tree</h2>
+            <button id="closeSkillTree">X</button>
+            <div id="skillNodes"></div>
+        </div>
+        
+        <div id="gameOver">
+            <h2>Game Over</h2>
+            <p>You survived <span id="finalWave">0</span> waves!</p>
+            <button id="restartBtn">Restart Game</button>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // Game variables
+        let scene, camera, renderer;
+        let player, playerHealth = 100, playerMaxHealth = 100;
+        let playerLevel = 1, playerXP = 0, playerXPToNext = 100;
+        let skillPoints = 0;
+        let currentWave = 1, enemiesInWave = 5, enemiesAlive = 0;
+        let gameActive = true;
+        let bossActive = false;
+        
+        // Game objects
+        let enemies = [];
+        let projectiles = [];
+        let enemyProjectiles = [];
+        let particles = [];
+        
+        // Player skills
+        const skills = {
+            doubleShot: { level: 0, maxLevel: 5, name: "Double Shot", icon: "⚡", description: "Chance to shoot an extra projectile", position: { x: 200, y: 150 } },
+            fireDamage: { level: 0, maxLevel: 5, name: "Fire Mastery", icon: "🔥", description: "Increase fire damage", position: { x: 400, y: 150 } },
+            iceDamage: { level: 0, maxLevel: 5, name: "Ice Mastery", icon: "❄️", description: "Increase ice damage and slow enemies", position: { x: 600, y: 150 } },
+            critChance: { level: 0, maxLevel: 5, name: "Critical Strike", icon: "💥", description: "Increase critical hit chance", position: { x: 300, y: 300 } },
+            lifeSteal: { level: 0, maxLevel: 5, name: "Life Steal", icon: "💚", description: "Heal when dealing damage", position: { x: 500, y: 300 } },
+            movementSpeed: { level: 0, maxLevel: 5, name: "Swift Movement", icon: "🏃", description: "Increase movement speed", position: { x: 400, y: 450 } }
+        };
+        
+        // Skill connections
+        const skillConnections = [
+            { from: "doubleShot", to: "critChance" },
+            { from: "fireDamage", to: "critChance" },
+            { from: "iceDamage", to: "critChance" },
+            { from: "critChance", to: "lifeSteal" },
+            { from: "critChance", to: "movementSpeed" }
+        ];
+        
+        // Input handling
+        const keys = {};
+        let mouseX = 0, mouseY = 0;
+        
+        // Create capsule-like geometry using cylinder and spheres
+        function createCapsuleGeometry(radius, height, radialSegments) {
+            const group = new THREE.Group();
+            
+            // Main cylinder
+            const cylinderGeometry = new THREE.CylinderGeometry(radius, radius, height, radialSegments);
+            const cylinderMaterial = new THREE.MeshStandardMaterial();
+            const cylinder = new THREE.Mesh(cylinderGeometry, cylinderMaterial);
+            cylinder.position.y = 0;
+            group.add(cylinder);
+            
+            // Top sphere
+            const sphereGeometry = new THREE.SphereGeometry(radius, radialSegments, radialSegments);
+            const topSphere = new THREE.Mesh(sphereGeometry, cylinderMaterial);
+            topSphere.position.y = height / 2;
+            group.add(topSphere);
+            
+            // Bottom sphere
+            const bottomSphere = new THREE.Mesh(sphereGeometry, cylinderMaterial);
+            bottomSphere.position.y = -height / 2;
+            group.add(bottomSphere);
+            
+            return group;
+        }
+        
+        // Initialize Three.js
+        function init() {
+            // Create scene
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x111122);
+            scene.fog = new THREE.Fog(0x111122, 10, 50);
+            
+            // Create camera
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 15, 20);
+            camera.lookAt(0, 0, 0);
+            
+            // Create renderer
+            renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('gameCanvas'), antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            
+            // Add lighting
+            const ambientLight = new THREE.AmbientLight(0x404040);
+            scene.add(ambientLight);
+            
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+            directionalLight.position.set(5, 10, 7);
+            directionalLight.castShadow = true;
+            directionalLight.shadow.mapSize.width = 2048;
+            directionalLight.shadow.mapSize.height = 2048;
+            scene.add(directionalLight);
+            
+            // Create ground
+            const groundGeometry = new THREE.PlaneGeometry(100, 100);
+            const groundMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0x333366,
+                roughness: 0.8,
+                metalness: 0.2
+            });
+            const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+            ground.rotation.x = -Math.PI / 2;
+            ground.receiveShadow = true;
+            scene.add(ground);
+            
+            // Create grid helper
+            const gridHelper = new THREE.GridHelper(100, 50, 0x444466, 0x222244);
+            scene.add(gridHelper);
+            
+            // Create player using capsule-like geometry
+            player = createCapsuleGeometry(0.5, 1, 8);
+            player.position.set(0, 0.5, 0);
+            player.traverse((child) => {
+                if (child.isMesh) {
+                    child.material = new THREE.MeshStandardMaterial({ 
+                        color: 0x3399ff,
+                        emissive: 0x112255,
+                        roughness: 0.3,
+                        metalness: 0.7
+                    });
+                    child.castShadow = true;
+                }
+            });
+            scene.add(player);
+            
+            // Add player light
+            const playerLight = new THREE.PointLight(0x3399ff, 0.5, 10);
+            playerLight.position.copy(player.position);
+            playerLight.position.y += 1;
+            scene.add(playerLight);
+            player.light = playerLight;
+            
+            // Initialize skill tree UI
+            initSkillTree();
+            
+            // Start first wave
+            startWave();
+            
+            // Start game loop
+            animate();
+        }
+        
+        // Initialize skill tree UI
+        function initSkillTree() {
+            const skillNodesContainer = document.getElementById('skillNodes');
+            
+            // Create skill connections
+            skillConnections.forEach(conn => {
+                const fromSkill = skills[conn.from];
+                const toSkill = skills[conn.to];
+                
+                const dx = toSkill.position.x - fromSkill.position.x;
+                const dy = toSkill.position.y - fromSkill.position.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+                
+                const connection = document.createElement('div');
+                connection.className = 'skill-connection';
+                connection.style.width = `${distance}px`;
+                connection.style.left = `${fromSkill.position.x + 30}px`;
+                connection.style.top = `${fromSkill.position.y + 30}px`;
+                connection.style.transform = `rotate(${angle}deg)`;
+                
+                skillNodesContainer.appendChild(connection);
+            });
+            
+            // Create skill nodes
+            Object.entries(skills).forEach(([key, skill]) => {
+                const node = document.createElement('div');
+                node.className = 'skill-node';
+                node.id = `skill-${key}`;
+                node.style.left = `${skill.position.x}px`;
+                node.style.top = `${skill.position.y}px`;
+                node.innerHTML = skill.icon;
+                node.title = `${skill.name}: ${skill.description}`;
+                
+                node.addEventListener('click', () => unlockSkill(key));
+                
+                skillNodesContainer.appendChild(node);
+            });
+            
+            // Close skill tree button
+            document.getElementById('closeSkillTree').addEventListener('click', closeSkillTree);
+            
+            // Keyboard shortcut for skill tree
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'k' || e.key === 'K') {
+                    if (document.getElementById('skillTree').style.display === 'block') {
+                        closeSkillTree();
+                    } else {
+                        openSkillTree();
+                    }
+                }
+            });
+        }
+        
+        // Open skill tree
+        function openSkillTree() {
+            document.getElementById('skillTree').style.display = 'block';
+            updateSkillTreeUI();
+        }
+        
+        // Close skill tree
+        function closeSkillTree() {
+            document.getElementById('skillTree').style.display = 'none';
+        }
+        
+        // Update skill tree UI
+        function updateSkillTreeUI() {
+            // Update skill points display
+            document.getElementById('pointsCount').textContent = skillPoints;
+            
+            // Update skill nodes
+            Object.entries(skills).forEach(([key, skill]) => {
+                const node = document.getElementById(`skill-${key}`);
+                
+                // Reset classes
+                node.classList.remove('unlocked', 'available');
+                
+                if (skill.level > 0) {
+                    node.classList.add('unlocked');
+                    node.innerHTML = `${skill.icon} ${skill.level}`;
+                } else if (skillPoints > 0 && canUnlockSkill(key)) {
+                    node.classList.add('available');
+                }
+            });
+            
+            // Update connections
+            const connections = document.querySelectorAll('.skill-connection');
+            connections.forEach(conn => {
+                conn.classList.remove('active');
+            });
+            
+            skillConnections.forEach(conn => {
+                if (skills[conn.from].level > 0) {
+                    const fromSkill = skills[conn.from];
+                    const toSkill = skills[conn.to];
+                    
+                    const dx = toSkill.position.x - fromSkill.position.x;
+                    const dy = toSkill.position.y - fromSkill.position.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+                    
+                    const connection = Array.from(connections).find(c => 
+                        parseFloat(c.style.left) === fromSkill.position.x + 30 &&
+                        parseFloat(c.style.top) === fromSkill.position.y + 30 &&
+                        parseFloat(c.style.width) === distance
+                    );
+                    
+                    if (connection) {
+                        connection.classList.add('active');
+                    }
+                }
+            });
+        }
+        
+        // Check if a skill can be unlocked
+        function canUnlockSkill(skillKey) {
+            const skill = skills[skillKey];
+            
+            // Check if skill is already maxed
+            if (skill.level >= skill.maxLevel) return false;
+            
+            // Check if skill is a root node (no prerequisites)
+            const isRootNode = !skillConnections.some(conn => conn.to === skillKey);
+            if (isRootNode) return true;
+            
+            // Check if at least one prerequisite is unlocked
+            const hasPrerequisite = skillConnections.some(conn => 
+                conn.to === skillKey && skills[conn.from].level > 0
+            );
+            
+            return hasPrerequisite;
+        }
+        
+        // Unlock a skill
+        function unlockSkill(skillKey) {
+            if (!canUnlockSkill(skillKey) || skillPoints <= 0) return;
+            
+            const skill = skills[skillKey];
+            skill.level++;
+            skillPoints--;
+            
+            updateSkillTreeUI();
+            applySkillEffects();
+        }
+        
+        // Apply skill effects
+        function applySkillEffects() {
+            // This function would apply the actual effects of skills to gameplay
+            // For simplicity, we'll just log the changes
+            console.log("Skills updated:", skills);
+        }
+        
+        // Start a new wave
+        function startWave() {
+            enemiesAlive = 0;
+            bossActive = false;
+            
+            // Update wave info
+            document.getElementById('waveNumber').textContent = currentWave;
+            
+            // Calculate enemies in this wave
+            enemiesInWave = 5 + Math.floor(currentWave * 1.5);
+            
+            // Check if boss wave
+            if (currentWave % 10 === 0) {
+                spawnBoss();
+            } else {
+                // Spawn regular enemies
+                for (let i = 0; i < enemiesInWave; i++) {
+                    setTimeout(() => spawnEnemy(), i * 500);
+                }
+            }
+        }
+        
+        // Spawn an enemy
+        function spawnEnemy() {
+            if (!gameActive) return;
+            
+            const enemy = createCapsuleGeometry(0.4, 0.8, 6);
+            
+            // Random position around the edge of the map
+            const angle = Math.random() * Math.PI * 2;
+            const distance = 20 + Math.random() * 10;
+            enemy.position.set(
+                Math.cos(angle) * distance,
+                0.4,
+                Math.sin(angle) * distance
+            );
+            
+            enemy.traverse((child) => {
+                if (child.isMesh) {
+                    child.material = new THREE.MeshStandardMaterial({ 
+                        color: 0xff5555,
+                        emissive: 0x441111,
+                        roughness: 0.4,
+                        metalness: 0.6
+                    });
+                    child.castShadow = true;
+                }
+            });
+            
+            enemy.health = 30 + currentWave * 5;
+            enemy.maxHealth = enemy.health;
+            enemy.speed = 0.05 + Math.min(currentWave * 0.005, 0.1);
+            enemy.lastShot = 0;
+            enemy.shootCooldown = 2000 - Math.min(currentWave * 50, 1500);
+            
+            // Add enemy light
+            const enemyLight = new THREE.PointLight(0xff5555, 0.3, 5);
+            enemyLight.position.copy(enemy.position);
+            enemyLight.position.y += 1;
+            scene.add(enemyLight);
+            enemy.light = enemyLight;
+            
+            // Create health bar
+            const healthBarGeometry = new THREE.PlaneGeometry(2, 0.2);
+            const healthBarMaterial = new THREE.MeshBasicMaterial({ color: 0xff3333 });
+            const healthBar = new THREE.Mesh(healthBarGeometry, healthBarMaterial);
+            healthBar.position.copy(enemy.position);
+            healthBar.position.y += 1.5;
+            scene.add(healthBar);
+            enemy.healthBar = healthBar;
+            
+            scene.add(enemy);
+            enemies.push(enemy);
+            enemiesAlive++;
+        }
+        
+        // Spawn a boss
+        function spawnBoss() {
+            if (!gameActive) return;
+            
+            bossActive = true;
+            
+            const bossGeometry = new THREE.CylinderGeometry(1.5, 1.5, 3, 16);
+            const bossMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0xaa00ff,
+                emissive: 0x4400aa,
+                roughness: 0.3,
+                metalness: 0.7
+            });
+            const boss = new THREE.Mesh(bossGeometry, bossMaterial);
+            
+            // Position boss at a distance
+            const angle = Math.random() * Math.PI * 2;
+            const distance = 25;
+            boss.position.set(
+                Math.cos(angle) * distance,
+                1.5,
+                Math.sin(angle) * distance
+            );
+            
+            boss.castShadow = true;
+            boss.health = 200 + currentWave * 20;
+            boss.maxHealth = boss.health;
+            boss.speed = 0.03 + Math.min(currentWave * 0.003, 0.08);
+            boss.lastShot = 0;
+            boss.shootCooldown = 1500 - Math.min(currentWave * 30, 1000);
+            boss.isBoss = true;
+            
+            // Add boss light
+            const bossLight = new THREE.PointLight(0xaa00ff, 1, 10);
+            bossLight.position.copy(boss.position);
+            bossLight.position.y += 2;
+            scene.add(bossLight);
+            boss.light = bossLight;
+            
+            // Create health bar
+            const healthBarGeometry = new THREE.PlaneGeometry(4, 0.4);
+            const healthBarMaterial = new THREE.MeshBasicMaterial({ color: 0xaa00ff });
+            const healthBar = new THREE.Mesh(healthBarGeometry, healthBarMaterial);
+            healthBar.position.copy(boss.position);
+            healthBar.position.y += 3;
+            scene.add(healthBar);
+            boss.healthBar = healthBar;
+            
+            scene.add(boss);
+            enemies.push(boss);
+            enemiesAlive++;
+        }
+        
+        // Player shooting
+        function playerShoot() {
+            if (!gameActive) return;
+            
+            // Calculate direction to mouse
+            const direction = new THREE.Vector3(mouseX, 0, mouseY).sub(player.position).normalize();
+            
+            // Create projectile
+            const projectileGeometry = new THREE.SphereGeometry(0.2, 8, 8);
+            const projectileMaterial = new THREE.MeshBasicMaterial({ 
+                color: skills.fireDamage.level > 0 ? 0xff6600 : 0x33ccff,
+                emissive: skills.fireDamage.level > 0 ? 0xff3300 : 0x0099ff
+            });
+            const projectile = new THREE.Mesh(projectileGeometry, projectileMaterial);
+            
+            projectile.position.copy(player.position);
+            projectile.position.y += 0.5;
+            projectile.velocity = direction.clone().multiplyScalar(0.5);
+            projectile.damage = 10 + playerLevel * 2 + skills.fireDamage.level * 5;
+            
+            // Apply double shot skill
+            if (skills.doubleShot.level > 0 && Math.random() < skills.doubleShot.level * 0.15) {
+                // Create second projectile with slight angle variation
+                const secondProjectile = new THREE.Mesh(projectileGeometry, projectileMaterial);
+                secondProjectile.position.copy(projectile.position);
+                
+                const angleVariation = (Math.random() - 0.5) * 0.3;
+                const variedDirection = direction.clone();
+                variedDirection.applyAxisAngle(new THREE.Vector3(0, 1, 0), angleVariation);
+                
+                secondProjectile.velocity = variedDirection.multiplyScalar(0.5);
+                secondProjectile.damage = projectile.damage;
+                
+                // Add projectile light
+                const secondProjectileLight = new THREE.PointLight(
+                    skills.fireDamage.level > 0 ? 0xff6600 : 0x33ccff, 
+                    0.5, 
+                    3
+                );
+                secondProjectileLight.position.copy(secondProjectile.position);
+                scene.add(secondProjectileLight);
+                secondProjectile.light = secondProjectileLight;
+                
+                scene.add(secondProjectile);
+                projectiles.push(secondProjectile);
+            }
+            
+            // Add projectile light
+            const projectileLight = new THREE.PointLight(
+                skills.fireDamage.level > 0 ? 0xff6600 : 0x33ccff, 
+                0.5, 
+                3
+            );
+            projectileLight.position.copy(projectile.position);
+            scene.add(projectileLight);
+            projectile.light = projectileLight;
+            
+            scene.add(projectile);
+            projectiles.push(projectile);
+            
+            // Create muzzle flash effect
+            createMuzzleFlash(player.position.clone().add(direction.clone().multiplyScalar(0.7)));
+        }
+        
+        // Enemy shooting
+        function enemyShoot(enemy) {
+            if (!gameActive) return;
+            
+            // Calculate direction to player
+            const direction = player.position.clone().sub(enemy.position).normalize();
+            
+            // Create projectile
+            const projectileGeometry = new THREE.SphereGeometry(0.15, 6, 6);
+            const projectileMaterial = new THREE.MeshBasicMaterial({ 
+                color: 0xff3333,
+                emissive: 0xaa0000
+            });
+            const projectile = new THREE.Mesh(projectileGeometry, projectileMaterial);
+            
+            projectile.position.copy(enemy.position);
+            projectile.position.y += 0.5;
+            projectile.velocity = direction.clone().multiplyScalar(0.3);
+            projectile.damage = 5 + currentWave;
+            
+            // Add projectile light
+            const projectileLight = new THREE.PointLight(0xff3333, 0.3, 2);
+            projectileLight.position.copy(projectile.position);
+            scene.add(projectileLight);
+            projectile.light = projectileLight;
+            
+            scene.add(projectile);
+            enemyProjectiles.push(projectile);
+        }
+        
+        // Create muzzle flash effect
+        function createMuzzleFlash(position) {
+            const flashGeometry = new THREE.SphereGeometry(0.3, 8, 8);
+            const flashMaterial = new THREE.MeshBasicMaterial({ 
+                color: skills.fireDamage.level > 0 ? 0xffaa00 : 0x66ddff,
+                transparent: true,
+                opacity: 0.8
+            });
+            const flash = new THREE.Mesh(flashGeometry, flashMaterial);
+            flash.position.copy(position);
+            
+            scene.add(flash);
+            
+            // Animate and remove
+            const startTime = Date.now();
+            const animate = () => {
+                const elapsed = Date.now() - startTime;
+                const progress = elapsed / 200;
+                
+                if (progress < 1) {
+                    flash.scale.set(1 + progress * 2, 1 + progress * 2, 1 + progress * 2);
+                    flash.material.opacity = 0.8 * (1 - progress);
+                    requestAnimationFrame(animate);
+                } else {
+                    scene.remove(flash);
+                }
+            };
+            animate();
+        }
+        
+        // Create explosion effect
+        function createExplosion(position, color = 0xff6600) {
+            // Create particles
+            for (let i = 0; i < 20; i++) {
+                const particleGeometry = new THREE.SphereGeometry(0.1, 4, 4);
+                const particleMaterial = new THREE.MeshBasicMaterial({ 
+                    color: color,
+                    transparent: true,
+                    opacity: 0.8
+                });
+                const particle = new THREE.Mesh(particleGeometry, particleMaterial);
+                
+                particle.position.copy(position);
+                
+                // Random velocity
+                const velocity = new THREE.Vector3(
+                    (Math.random() - 0.5) * 0.3,
+                    (Math.random() - 0.5) * 0.3,
+                    (Math.random() - 0.5) * 0.3
+                );
+                
+                particle.velocity = velocity;
+                particle.life = 1.0;
+                
+                scene.add(particle);
+                particles.push(particle);
+            }
+            
+            // Create light flash
+            const light = new THREE.PointLight(color, 2, 10);
+            light.position.copy(position);
+            scene.add(light);
+            
+            // Fade out light
+            const startTime = Date.now();
+            const animate = () => {
+                const elapsed = Date.now() - startTime;
+                const progress = elapsed / 500;
+                
+                if (progress < 1) {
+                    light.intensity = 2 * (1 - progress);
+                    requestAnimationFrame(animate);
+                } else {
+                    scene.remove(light);
+                }
+            };
+            animate();
+        }
+        
+        // Handle player damage
+        function damagePlayer(amount) {
+            playerHealth -= amount;
+            
+            // Update health bar
+            const healthPercent = Math.max(0, playerHealth / playerMaxHealth) * 100;
+            document.getElementById('healthFill').style.width = `${healthPercent}%`;
+            
+            // Create damage effect
+            const damageGeometry = new THREE.RingGeometry(0.8, 1.2, 16);
+            const damageMaterial = new THREE.MeshBasicMaterial({ 
+                color: 0xff3333, 
+                side: THREE.DoubleSide,
+                transparent: true,
+                opacity: 0.7
+            });
+            const damageEffect = new THREE.Mesh(damageGeometry, damageMaterial);
+            damageEffect.position.copy(player.position);
+            damageEffect.position.y += 0.5;
+            damageEffect.lookAt(camera.position);
+            
+            scene.add(damageEffect);
+            
+            // Animate and remove
+            const startTime = Date.now();
+            const animate = () => {
+                const elapsed = Date.now() - startTime;
+                const progress = elapsed / 300;
+                
+                if (progress < 1) {
+                    damageEffect.scale.set(1 + progress, 1 + progress, 1);
+                    damageEffect.material.opacity = 0.7 * (1 - progress);
+                    requestAnimationFrame(animate);
+                } else {
+                    scene.remove(damageEffect);
+                }
+            };
+            animate();
+            
+            // Check if player died
+            if (playerHealth <= 0) {
+                gameOver();
+            }
+        }
+        
+        // Handle enemy damage
+        function damageEnemy(enemy, amount) {
+            enemy.health -= amount;
+            
+            // Update health bar
+            const healthPercent = Math.max(0, enemy.health / enemy.maxHealth);
+            enemy.healthBar.scale.x = healthPercent;
+            
+            // Create damage effect
+            const damageGeometry = new THREE.RingGeometry(0.5, 0.8, 12);
+            const damageMaterial = new THREE.MeshBasicMaterial({ 
+                color: 0xffaa00, 
+                side: THREE.DoubleSide,
+                transparent: true,
+                opacity: 0.7
+            });
+            const damageEffect = new THREE.Mesh(damageGeometry, damageMaterial);
+            damageEffect.position.copy(enemy.position);
+            damageEffect.position.y += 0.5;
+            damageEffect.lookAt(camera.position);
+            
+            scene.add(damageEffect);
+            
+            // Animate and remove
+            const startTime = Date.now();
+            const animate = () => {
+                const elapsed = Date.now() - startTime;
+                const progress = elapsed / 300;
+                
+                if (progress < 1) {
+                    damageEffect.scale.set(1 + progress, 1 + progress, 1);
+                    damageEffect.material.opacity = 0.7 * (1 - progress);
+                    requestAnimationFrame(animate);
+                } else {
+                    scene.remove(damageEffect);
+                }
+            };
+            animate();
+            
+            // Apply life steal
+            if (skills.lifeSteal.level > 0) {
+                const healAmount = amount * skills.lifeSteal.level * 0.05;
+                playerHealth = Math.min(playerMaxHealth, playerHealth + healAmount);
+                
+                // Update health bar
+                const healthPercent = Math.max(0, playerHealth / playerMaxHealth) * 100;
+                document.getElementById('healthFill').style.width = `${healthPercent}%`;
+            }
+            
+            // Check if enemy died
+            if (enemy.health <= 0) {
+                // Create explosion
+                createExplosion(enemy.position, enemy.isBoss ? 0xaa00ff : 0xff6600);
+                
+                // Gain XP
+                const xpGain = enemy.isBoss ? 50 : 10;
+                gainXP(xpGain);
+                
+                // Remove enemy
+                scene.remove(enemy);
+                scene.remove(enemy.healthBar);
+                scene.remove(enemy.light);
+                enemies = enemies.filter(e => e !== enemy);
+                enemiesAlive--;
+                
+                // Check if wave is complete
+                if (enemiesAlive <= 0) {
+                    waveComplete();
+                }
+            }
+        }
+        
+        // Gain XP
+        function gainXP(amount) {
+            playerXP += amount;
+            
+            // Check for level up
+            while (playerXP >= playerXPToNext) {
+                playerXP -= playerXPToNext;
+                playerLevel++;
+                playerXPToNext = 100 * playerLevel;
+                skillPoints++;
+                
+                // Heal player on level up
+                playerHealth = Math.min(playerMaxHealth, playerHealth + playerMaxHealth * 0.3);
+                const healthPercent = Math.max(0, playerHealth / playerMaxHealth) * 100;
+                document.getElementById('healthFill').style.width = `${healthPercent}%`;
+                
+                // Show level up effect
+                createLevelUpEffect();
+                
+                // Update skill tree
+                updateSkillTreeUI();
+            }
+            
+            // Update XP bar
+            const xpPercent = (playerXP / playerXPToNext) * 100;
+            document.getElementById('xpFill').style.width = `${xpPercent}%`;
+        }
+        
+        // Create level up effect
+        function createLevelUpEffect() {
+            const levelUpGeometry = new THREE.TorusGeometry(1.5, 0.2, 8, 32);
+            const levelUpMaterial = new THREE.MeshBasicMaterial({ 
+                color: 0xffcc00,
+                transparent: true,
+                opacity: 0.8
+            });
+            const levelUpEffect = new THREE.Mesh(levelUpGeometry, levelUpMaterial);
+            levelUpEffect.position.copy(player.position);
+            levelUpEffect.position.y += 1;
+            
+            scene.add(levelUpEffect);
+            
+            // Animate and remove
+            const startTime = Date.now();
+            const animate = () => {
+                const elapsed = Date.now() - startTime;
+                const progress = elapsed / 1000;
+                
+                if (progress < 1) {
+                    levelUpEffect.position.y += 0.02;
+                    levelUpEffect.rotation.x += 0.05;
+                    levelUpEffect.rotation.y += 0.03;
+                    levelUpEffect.scale.set(1 + progress, 1 + progress, 1);
+                    levelUpEffect.material.opacity = 0.8 * (1 - progress);
+                    requestAnimationFrame(animate);
+                } else {
+                    scene.remove(levelUpEffect);
+                }
+            };
+            animate();
+        }
+        
+        // Wave complete
+        function waveComplete() {
+            currentWave++;
+            
+            // Give skill point every 5 waves
+            if (currentWave % 5 === 0) {
+                skillPoints++;
+                updateSkillTreeUI();
+            }
+            
+            // Start next wave after delay
+            setTimeout(() => startWave(), 2000);
+        }
+        
+        // Game over
+        function gameOver() {
+            gameActive = false;
+            document.getElementById('finalWave').textContent = currentWave;
+            document.getElementById('gameOver').style.display = 'block';
+        }
+        
+        // Restart game
+        function restartGame() {
+            // Reset game state
+            playerHealth = playerMaxHealth;
+            playerLevel = 1;
+            playerXP = 0;
+            playerXPToNext = 100;
+            skillPoints = 0;
+            currentWave = 1;
+            gameActive = true;
+            
+            // Reset skills
+            Object.values(skills).forEach(skill => {
+                skill.level = 0;
+            });
+            
+            // Update UI
+            document.getElementById('healthFill').style.width = '100%';
+            document.getElementById('xpFill').style.width = '0%';
+            document.getElementById('waveNumber').textContent = currentWave;
+            document.getElementById('pointsCount').textContent = skillPoints;
+            document.getElementById('gameOver').style.display = 'none';
+            
+            // Clear enemies
+            enemies.forEach(enemy => {
+                scene.remove(enemy);
+                scene.remove(enemy.healthBar);
+                scene.remove(enemy.light);
+            });
+            enemies = [];
+            
+            // Clear projectiles
+            projectiles.forEach(proj => {
+                scene.remove(proj);
+                scene.remove(proj.light);
+            });
+            projectiles = [];
+            
+            enemyProjectiles.forEach(proj => {
+                scene.remove(proj);
+                scene.remove(proj.light);
+            });
+            enemyProjectiles = [];
+            
+            // Clear particles
+            particles.forEach(particle => {
+                scene.remove(particle);
+            });
+            particles = [];
+            
+            // Reset player position
+            player.position.set(0, 0.5, 0);
+            
+            // Update skill tree
+            updateSkillTreeUI();
+            
+            // Start first wave
+            startWave();
+        }
+        
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            if (!gameActive) return;
+            
+            // Player movement
+            const moveSpeed = 0.1 + skills.movementSpeed.level * 0.02;
+            if (keys['w'] || keys['W'] || keys['ArrowUp']) player.position.z -= moveSpeed;
+            if (keys['s'] || keys['S'] || keys['ArrowDown']) player.position.z += moveSpeed;
+            if (keys['a'] || keys['A'] || keys['ArrowLeft']) player.position.x -= moveSpeed;
+            if (keys['d'] || keys['D'] || keys['ArrowRight']) player.position.x += moveSpeed;
+            
+            // Keep player in bounds
+            player.position.x = Math.max(-45, Math.min(45, player.position.x));
+            player.position.z = Math.max(-45, Math.min(45, player.position.z));
+            
+            // Update player light
+            player.light.position.copy(player.position);
+            player.light.position.y += 1;
+            
+            // Player auto-shoot
+            if (enemies.length > 0 && Date.now() % 500 < 16) {
+                playerShoot();
+            }
+            
+            // Update enemies
+            enemies.forEach(enemy => {
+                // Move towards player
+                const direction = player.position.clone().sub(enemy.position).normalize();
+                enemy.position.add(direction.clone().multiplyScalar(enemy.speed));
+                
+                // Update enemy light
+                enemy.light.position.copy(enemy.position);
+                enemy.light.position.y += 1;
+                
+                // Update health bar
+                enemy.healthBar.position.copy(enemy.position);
+                enemy.healthBar.position.y += enemy.isBoss ? 3 : 1.5;
+                enemy.healthBar.lookAt(camera.position);
+                
+                // Enemy shooting
+                if (Date.now() - enemy.lastShot > enemy.shootCooldown) {
+                    enemyShoot(enemy);
+                    enemy.lastShot = Date.now();
+                }
+            });
+            
+            // Update projectiles with safe iteration
+            const projectilesToRemove = [];
+            for (let i = 0; i < projectiles.length; i++) {
+                const proj = projectiles[i];
+                if (!proj || !proj.position) {
+                    projectilesToRemove.push(i);
+                    continue;
+                }
+                
+                proj.position.add(proj.velocity);
+                
+                // Update projectile light
+                if (proj.light) {
+                    proj.light.position.copy(proj.position);
+                }
+                
+                // Check collision with enemies
+                let hit = false;
+                const enemiesCopy = [...enemies]; // Create a copy to avoid modification during iteration
+                for (let j = 0; j < enemiesCopy.length; j++) {
+                    const enemy = enemiesCopy[j];
+                    if (!enemy) continue;
+                    
+                    const distance = proj.position.distanceTo(enemy.position);
+                    if (distance < 1) {
+                        // Apply critical hit chance
+                        let damage = proj.damage;
+                        if (skills.critChance.level > 0 && Math.random() < skills.critChance.level * 0.1) {
+                            damage *= 2;
+                            createExplosion(proj.position, 0xffff00);
+                        }
+                        
+                        damageEnemy(enemy, damage);
+                        hit = true;
+                        break;
+                    }
+                }
+                
+                // Remove projectile if hit or out of bounds
+                if (hit || proj.position.length() > 100) {
+                    projectilesToRemove.push(i);
+                }
+            }
+            
+            // Remove projectiles in reverse order
+            for (let i = projectilesToRemove.length - 1; i >= 0; i--) {
+                const index = projectilesToRemove[i];
+                const proj = projectiles[index];
+                if (proj) {
+                    scene.remove(proj);
+                    if (proj.light) scene.remove(proj.light);
+                }
+                projectiles.splice(index, 1);
+            }
+            
+            // Update enemy projectiles with safe iteration
+            const enemyProjectilesToRemove = [];
+            for (let i = 0; i < enemyProjectiles.length; i++) {
+                const proj = enemyProjectiles[i];
+                if (!proj || !proj.position) {
+                    enemyProjectilesToRemove.push(i);
+                    continue;
+                }
+                
+                proj.position.add(proj.velocity);
+                
+                // Update projectile light
+                if (proj.light) {
+                    proj.light.position.copy(proj.position);
+                }
+                
+                // Check collision with player
+                const distance = proj.position.distanceTo(player.position);
+                if (distance < 1 || proj.position.length() > 100) {
+                    if (distance < 1) {
+                        damagePlayer(proj.damage);
+                    }
+                    enemyProjectilesToRemove.push(i);
+                }
+            }
+            
+            // Remove enemy projectiles in reverse order
+            for (let i = enemyProjectilesToRemove.length - 1; i >= 0; i--) {
+                const index = enemyProjectilesToRemove[i];
+                const proj = enemyProjectiles[index];
+                if (proj) {
+                    scene.remove(proj);
+                    if (proj.light) scene.remove(proj.light);
+                }
+                enemyProjectiles.splice(index, 1);
+            }
+            
+            // Update particles with safe iteration
+            const particlesToRemove = [];
+            for (let i = 0; i < particles.length; i++) {
+                const particle = particles[i];
+                if (!particle || !particle.position) {
+                    particlesToRemove.push(i);
+                    continue;
+                }
+                
+                particle.position.add(particle.velocity);
+                particle.velocity.y -= 0.01; // Gravity
+                particle.life -= 0.02;
+                particle.material.opacity = particle.life;
+                
+                if (particle.life <= 0) {
+                    particlesToRemove.push(i);
+                }
+            }
+            
+            // Remove particles in reverse order
+            for (let i = particlesToRemove.length - 1; i >= 0; i--) {
+                const index = particlesToRemove[i];
+                const particle = particles[index];
+                if (particle) {
+                    scene.remove(particle);
+                }
+                particles.splice(index, 1);
+            }
+            
+            // Render scene
+            renderer.render(scene, camera);
+        }
+        
+        // Event listeners
+        window.addEventListener('keydown', (e) => {
+            keys[e.key] = true;
+        });
+        
+        window.addEventListener('keyup', (e) => {
+            keys[e.key] = false;
+        });
+        
+        window.addEventListener('mousemove', (e) => {
+            // Calculate mouse position in 3D space
+            const rect = renderer.domElement.getBoundingClientRect();
+            const x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+            const y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+            
+            const vector = new THREE.Vector3(x, y, 0.5);
+            vector.unproject(camera);
+            const dir = vector.sub(camera.position).normalize();
+            const distance = -camera.position.y / dir.y;
+            const pos = camera.position.clone().add(dir.multiplyScalar(distance));
+            
+            mouseX = pos.x;
+            mouseY = pos.z;
+        });
+        
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+        
+        document.getElementById('restartBtn').addEventListener('click', restartGame);
+        
+        // Initialize game
+        init();
+    </script>
+</body>
+</html>
